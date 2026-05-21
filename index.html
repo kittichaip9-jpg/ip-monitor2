@@ -169,8 +169,8 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 .port-btn.p443:hover{background:rgba(0,217,126,.18);border-color:var(--green)}
 .port-btn.p81{border-color:rgba(160,139,255,.2);background:rgba(160,139,255,.06);color:#a08bff}
 .port-btn.p81:hover{background:rgba(160,139,255,.18);border-color:#a08bff}
-.port-btn.p8006{border-color:rgba(251,146,60,.2);background:rgba(251,146,60,.06);color:#fb923c}
-.port-btn.p8006:hover{background:rgba(251,146,60,.18);border-color:#fb923c}
+.port-btn.p1223{border-color:rgba(255,179,0,.2);background:rgba(255,179,0,.06);color:#ffb300}
+.port-btn.p1223:hover{background:rgba(255,179,0,.18);border-color:#ffb300}
 
 
 /* -- DELETE BUTTON -- */
@@ -340,6 +340,7 @@ function buildCard(b, idx) {
           <a class="port-btn p443" href="https://${ip}:443"  target="_blank" title="Open port 443" >🔒 443</a>
           <a class="port-btn p81"  href="http://${ip}:81/admin/smartzone.php"    target="_blank" title="Open port 81"  >🌐 81</a>
           <a class="port-btn p8006" href="https://${ip}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
+          <a class="port-btn p1223" href="ssh://${ip}:1223" title="SSH port 1223">🔐 1223</a>
         </div>
       </div>
     </div>`).join('');
