@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IP Monitor Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Thai:wght@400;600;700&family=Syne:wght@700;800&display=swap');
+:root{
+  --bg:#07090f;--surface:#0c1018;--card:#0f1420;
+  --border:#182030;--border2:#1e2d44;
+  --accent:#00e0ff;--accent2:#5c35ff;
+  --green:#00d97e;--red:#ff3d5a;--yellow:#ffb300;
+  --text:#d8e6f5;--muted:#4a6080;--muted2:#2a3d55;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai','JetBrains Mono',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 0%,rgba(0,224,255,.05),transparent),
+    radial-gradient(ellipse 40% 30% at 80% 100%,rgba(92,53,255,.04),transparent),
+    linear-gradient(rgba(0,224,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,224,255,.018) 1px,transparent 1px);
+  background-size:auto,auto,44px 44px,44px 44px}
+
+/* ── HEADER ── */
+header{position:relative;z-index:2;padding:20px 40px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(0,224,255,.04),transparent);
+  display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{width:46px;height:46px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 0 24px rgba(0,224,255,.25)}
+.brand h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.4px}
+.brand h1 em{color:var(--accent);font-style:normal}
+.brand p{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.8px}
+.header-right{display:flex;align-items:center;gap:16px}
+#ts{font-size:11px;color:var(--muted)}
+.refresh-btn{background:rgba(0,224,255,.07);border:1px solid rgba(0,224,255,.3);
+  color:var(--accent);padding:8px 18px;border-radius:7px;cursor:pointer;
+  font-size:12px;font-family:'JetBrains Mono',monospace;transition:all .2s;letter-spacing:.3px}
+.refresh-btn:hover{background:rgba(0,224,255,.15);box-shadow:0 0 18px rgba(0,224,255,.15)}
+.refresh-btn.loading{opacity:.5;pointer-events:none}
+
+/* ── STATS BAR ── */
+.stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.stat{background:var(--surface);padding:16px 28px;display:flex;align-items:center;gap:14px}
+.stat-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stat-label{font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:4px;display:block}
+.stat-val{font-size:26px;font-weight:700;font-family:'Syne',sans-serif;line-height:1}
+
+/* ── MAIN ── */
+main{position:relative;z-index:1;padding:32px 40px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:18px}
+
+/* ── BUILDING CARD ── */
+.bcard{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;animation:up .4s ease both;transition:all .25s}
+.bcard:hover{border-color:var(--border2);box-shadow:0 8px 40px rgba(0,0,0,.4),0 0 0 1px rgba(0,224,255,.05)}
+.bcard-top{padding:18px 20px 14px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,rgba(0,224,255,.03),transparent)}
+.bcard-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.building-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;
+  display:flex;align-items:center;gap:8px}
+.building-name .icon{font-size:18px}
+.online-badge,.offline-badge{display:inline-flex;align-items:center;gap:5px;
+  padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.8px;
+  font-family:'JetBrains Mono',monospace}
+.online-badge {background:rgba(0,217,126,.1);color:var(--green);border:1px solid rgba(0,217,126,.25)}
+.offline-badge{background:rgba(255,61,90,.1); color:var(--red);  border:1px solid rgba(255,61,90,.2)}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.online-badge .badge-dot{animation:blink 2s infinite}
+
+/* IP chips */
+.ip-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.ip-chip{display:flex;align-items:center;gap:8px;
+  background:rgba(0,224,255,.06);border:1px solid rgba(0,224,255,.15);
+  border-radius:8px;padding:8px 14px}
+.ip-chip .wan-label{font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:3px}
+.ip-chip .ip-val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--accent)}
+.ip-chip.wan2{background:rgba(92,53,255,.06);border-color:rgba(92,53,255,.2)}
+.ip-chip.wan2 .ip-val{color:#a08bff}
+
+/* detail row */
+.bcard-footer{padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.updated-time{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.adapter-list{font-size:10px;color:var(--muted2)}
+
+/* -- SEARCH BAR -- */
+.search-bar{position:relative;z-index:1;padding:16px 40px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  display:flex;align-items:center;gap:12px}
+.search-wrap{position:relative;flex:1;max-width:420px}
+.search-wrap input{width:100%;background:var(--card);border:1px solid var(--border2);
+  color:var(--text);padding:9px 14px 9px 38px;border-radius:8px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:all .2s}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,224,255,.08)}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:14px;pointer-events:none}
+.filter-btns{display:flex;gap:6px}
+.filter-btn{padding:7px 14px;border-radius:6px;font-size:11px;font-weight:600;
+  letter-spacing:.5px;cursor:pointer;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;transition:all .2s}
+.filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.filter-btn.active{background:rgba(0,224,255,.1);border-color:var(--accent);color:var(--accent)}
+.filter-btn.on.active{background:rgba(0,217,126,.1);border-color:var(--green);color:var(--green)}
+.filter-btn.off.active{background:rgba(255,61,90,.1);border-color:var(--red);color:var(--red)}
+.search-count{font-size:11px;color:var(--muted);margin-left:auto;font-family:'JetBrains Mono',monospace}
+
+/* ── EMPTY / ERROR ── */
+.center-msg{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--muted)}
+.center-msg .icon{font-size:52px;margin-bottom:16px}
+.center-msg h2{font-family:'Syne',sans-serif;font-size:20px;color:var(--text);margin-bottom:10px}
+.center-msg p{font-size:13px;line-height:2}
+code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px}
+
+/* config panel removed - credentials hardcoded */
+
+
+/* -- LIST VIEW -- */
+.view-toggle{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:3px}
+.view-btn{width:32px;height:32px;border:none;background:transparent;color:var(--muted);
+  border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:all .2s}
+.view-btn.active{background:rgba(0,224,255,.12);color:var(--accent)}
+.view-btn:hover:not(.active){background:rgba(255,255,255,.05);color:var(--text)}
+
+/* list mode overrides main grid */
+#main.list-mode{grid-template-columns:1fr;gap:8px;padding:20px 40px}
+.list-mode .bcard{border-radius:8px}
+.list-mode .bcard-top{padding:12px 18px 10px}
+.list-mode .bcard-header{margin-bottom:6px}
+.list-mode .building-name{font-size:14px}
+.list-mode .ip-chips{gap:6px}
+.list-mode .ip-chip{padding:5px 10px}
+.list-mode .ip-chip .ip-val{font-size:13px}
+.list-mode .bcard-footer{padding:7px 18px}
+
+/* table mode */
+#main.table-mode{display:block;padding:20px 40px}
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{padding:11px 18px;text-align:left;font-size:10px;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);
+  background:var(--surface);font-family:'JetBrains Mono',monospace}
+.data-table td{padding:12px 18px;border-bottom:1px solid rgba(24,32,48,.8);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(0,224,255,.025)}
+.td-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px}
+.td-ip{font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:600;letter-spacing:.5px}
+.td-ip.wan2{color:#a08bff}
+.td-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+
+
+/* -- PORT BUTTONS -- */
+.port-btns{display:flex;gap:4px;margin-top:7px;flex-wrap:wrap}
+.port-btn{display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;cursor:pointer;
+  text-decoration:none;letter-spacing:.3px;transition:all .2s;
+  border:1px solid rgba(0,224,255,.2);background:rgba(0,224,255,.06);color:var(--accent)}
+.port-btn:hover{background:rgba(0,224,255,.18);border-color:var(--accent);
+  box-shadow:0 0 10px rgba(0,224,255,.15);transform:translateY(-1px)}
+.port-btn.p443{border-color:rgba(0,217,126,.2);background:rgba(0,217,126,.06);color:var(--green)}
+.port-btn.p443:hover{background:rgba(0,217,126,.18);border-color:var(--green)}
+.port-btn.p81{border-color:rgba(160,139,255,.2);background:rgba(160,139,255,.06);color:#a08bff}
+.port-btn.p81:hover{background:rgba(160,139,255,.18);border-color:#a08bff}
+.port-btn.p8006{border-color:rgba(251,146,60,.2);background:rgba(251,146,60,.06);color:#fb923c}
+.port-btn.p8006:hover{background:rgba(251,146,60,.18);border-color:#fb923c}
+
+
+/* -- DELETE BUTTON -- */
+.delete-btn{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:6px;
+  border:1px solid rgba(255,61,90,.25);background:rgba(255,61,90,.07);color:var(--red);
+  cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;opacity:0;pointer-events:none;z-index:5}
+.bcard{position:relative}
+.bcard:hover .delete-btn{opacity:1;pointer-events:auto}
+.delete-btn:hover{background:rgba(255,61,90,.2);border-color:var(--red);
+  box-shadow:0 0 10px rgba(255,61,90,.2);transform:scale(1.1)}
+
+/* -- CONFIRM MODAL -- */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+.modal-box{background:#0f1628;border:1px solid rgba(255,61,90,.3);border-radius:14px;
+  padding:28px 32px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.6),
+  0 0 0 1px rgba(255,61,90,.1)}
+.modal-icon{font-size:36px;text-align:center;margin-bottom:12px}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;
+  color:var(--text);text-align:center;margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.7}
+.modal-sub strong{color:var(--red);font-family:'JetBrains Mono',monospace}
+.modal-actions{display:flex;gap:10px}
+.modal-cancel{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  font-size:12px;cursor:pointer;transition:all .2s}
+.modal-cancel:hover{border-color:var(--text);color:var(--text)}
+.modal-confirm{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,61,90,.4);
+  background:rgba(255,61,90,.12);color:var(--red);font-family:'JetBrains Mono',monospace;
+  font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.modal-confirm:hover{background:rgba(255,61,90,.25);border-color:var(--red)}
+.modal-confirm.loading{opacity:.5;pointer-events:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.logout-btn{background:rgba(255,61,90,.07);border:1px solid rgba(255,61,90,.3);
+  color:var(--red);padding:8px 16px;border-radius:7px;cursor:pointer;
+  font-size:12px;font-family:'JetBrains Mono',monospace;transition:all .2s;letter-spacing:.3px}
+.logout-btn:hover{background:rgba(255,61,90,.18);box-shadow:0 0 14px rgba(255,61,90,.15)}
+.config-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+  display:flex;align-items:center;justify-content:center}
+.config-box{background:#0f1628;border:1px solid #1e2d4a;border-radius:12px;
+  padding:32px;width:480px;max-width:90vw}
+.config-box h3{font-family:'Syne',sans-serif;font-size:18px;color:#d8e6f5;margin-bottom:6px}
+.config-box p{font-size:12px;color:#4a6080;margin-bottom:20px}
+.config-field{margin-bottom:14px}
+.config-field label{display:block;font-size:11px;letter-spacing:.8px;color:#4a6080;margin-bottom:6px}
+.config-field input{width:100%;background:#07090f;border:1px solid #1e2d4a;color:#d8e6f5;
+  padding:10px 14px;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none}
+.config-field input:focus{border-color:#00e0ff}
+.config-actions{display:flex;gap:10px;margin-top:20px}
+.config-save{flex:1;background:rgba(0,224,255,.1);border:1px solid #00e0ff;color:#00e0ff;
+  padding:10px;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:13px;
+  cursor:pointer;transition:all .2s}
+.config-save:hover{background:rgba(0,224,255,.2)}
+.logout-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;
+  padding:8px 14px;border-radius:7px;font-size:11px;cursor:pointer;transition:all .2s;
+  font-family:'JetBrains Mono',monospace}
+.logout-btn:hover{background:rgba(239,68,68,.2)}
+
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">&#127758;</div>
+    <div>
+      <h1>IP <em>Monitor</em> Dashboard</h1>
+      <p>BUILDING PUBLIC IP TRACKER &nbsp;&#8212;&nbsp; REAL TIME</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="ts">-</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+  </div>
+</header>
+
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat"><div class="stat-pip" style="background:var(--text)"></div>
+    <div><span class="stat-label">TOTAL BUILDINGS</span><span class="stat-val" id="s-total" style="color:var(--text)">-</span></div></div>
+  <div class="stat"><div class="stat-pip" style="background:var(--green)"></div>
+    <div><span class="stat-label">ONLINE</span><span class="stat-val" id="s-online" style="color:var(--green)">-</span></div></div>
+  <div class="stat"><div class="stat-pip" style="background:var(--red)"></div>
+    <div><span class="stat-label">OFFLINE</span><span class="stat-val" id="s-offline" style="color:var(--red)">-</span></div></div>
+  <div class="stat"><div class="stat-pip" style="background:var(--accent)"></div>
+    <div><span class="stat-label">TOTAL PUBLIC IPs</span><span class="stat-val" id="s-ips" style="color:var(--accent)">-</span></div></div>
+</div>
+
+
+<div class="search-bar" id="search-bar" style="display:none">
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search-input" placeholder="Search building name or IP address..." oninput="filterCards()">
+  </div>
+  <div class="filter-btns">
+    <button class="filter-btn active" id="f-all"   onclick="setFilter('all')">ALL</button>
+    <button class="filter-btn on"     id="f-online" onclick="setFilter('online')">ONLINE</button>
+    <button class="filter-btn off"    id="f-offline" onclick="setFilter('offline')">OFFLINE</button>
+  </div>
+  <span class="search-count" id="search-count"></span>
+  <div class="view-toggle">
+    <button class="view-btn active" id="vbtn-grid"  onclick="setView('grid')"  title="Grid View">&#128471;</button>
+    <button class="view-btn"        id="vbtn-list"  onclick="setView('list')"  title="List View">&#9776;</button>
+    <button class="view-btn"        id="vbtn-table" onclick="setView('table')" title="Table View">&#128203;</button>
+  </div>
+</div>
+<div class="config-overlay" id="config-panel" style="display:none">
+  <div class="config-box">
+    <h3>⚠️ โหลดข้อมูลไม่สำเร็จ</h3>
+    <div id="login-error" style="background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
+      border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#ff3d5a;line-height:1.7">เกิดข้อผิดพลาด กรุณาลองใหม่</div>
+    <div class="config-actions">
+      <button class="config-save" onclick="document.getElementById('config-panel').style.display='none';loadData()">&#8635; ลองใหม่</button>
+    </div>
+  </div>
+</div>
+
+<main id="main">
+  <div class="center-msg">
+    <div class="icon">&#128752;</div>
+    <h2>กำลังโหลดข้อมูล...</h2>
+  </div>
+</main>
+
+<script>
+
+const API_URL = "https://script.google.com/macros/s/AKfycbzPjPr_QC1CAy1Ioxe5piDumpaP1NK3yyyhdyl8PTc9M7CbxpYv6FQt7ZPo9hJ1kJWF/exec";
+const AUTO_REFRESH_SEC = 60;
+
+function isStale(updated_at, minutes) {
+  if (!updated_at) return true;
+  try {
+    return (Date.now() - new Date(updated_at).getTime()) / 60000 > (minutes || 10);
+  } catch(e) { return true; }
+}
+
+function showLoginError(msg) {
+  const panel = document.getElementById('config-panel');
+  const errDiv = document.getElementById('login-error');
+  panel.style.display = 'flex';
+  errDiv.innerHTML = msg;
+}
+
+function toggleKey() {
+  const inp = document.getElementById('inp-key');
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+function saveConfig() {}
+function clearConfig() { location.reload(); }
+function getConfig() { return { key: 'x', bin: 'x' }; }
+
+function buildCard(b, idx) {
+  const chips = (b.public_ips || []).map((ip, i) => `
+    <div class="ip-chip ${i > 0 ? 'wan'+(i+1) : ''}">
+      <div>
+        <span class="wan-label">WAN ${i+1}</span>
+        <span class="ip-val">${ip}</span>
+        <div class="port-btns">
+          <a class="port-btn"      href="https://${ip}:9443" target="_blank" title="Open port 9443">🔗 9443</a>
+          <a class="port-btn p443" href="https://${ip}:443"  target="_blank" title="Open port 443" >🔒 443</a>
+          <a class="port-btn p81"  href="http://${ip}:81/admin/smartzone.php"    target="_blank" title="Open port 81"  >🌐 81</a>
+          <a class="port-btn p8006" href="https://${ip}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const noIP = !b.public_ips || b.public_ips.length === 0;
+  const badge = b.online
+    ? `<span class="online-badge"><span class="badge-dot"></span>ONLINE</span>`
+    : `<span class="offline-badge"><span class="badge-dot"></span>OFFLINE</span>`;
+
+  const updated = b.updated_at
+    ? new Date(b.updated_at).toLocaleString('th-TH', {hour12:false})
+    : '-';
+
+  const safeKey = encodeURIComponent(b._key || b.name);
+  return `
+  <div class="bcard" style="animation-delay:${idx * 0.06}s">
+    <button class="delete-btn" onclick="confirmDelete('${safeKey}','${b.name.replace(/'/g,"\\'")}',event)" title="ลบอาคารนี้">🗑️</button>
+    <div class="bcard-top">
+      <div class="bcard-header">
+        <div class="building-name"><span class="icon">&#127970;</span>${b.name}</div>
+        ${badge}
+      </div>
+      <div class="ip-chips">
+        ${noIP
+          ? `<span style="font-size:12px;color:var(--muted)">ไม่พบ Public IP</span>`
+          : chips}
+      </div>
+    </div>
+    <div class="bcard-footer">
+      <span class="updated-time">&#128336; ${updated}</span>
+      <span class="adapter-list">${(b.interfaces||[]).map(i=>i.adapter).join(', ')}</span>
+    </div>
+  </div>`;
+}
+
+
+
+// -- View Toggle --
+let currentView = 'grid';
+
+function setView(v) {
+  currentView = v;
+  ['grid','list','table'].forEach(x => {
+    document.getElementById('vbtn-'+x).classList.toggle('active', x===v);
+  });
+  const main = document.getElementById('main');
+  main.className = v === 'grid' ? '' : (v === 'list' ? 'list-mode' : 'table-mode');
+  filterCards();
+}
+
+function buildTableView(buildings) {
+  if (!buildings.length) return '<div class="center-msg" style="padding:60px"><div class="icon">&#128270;</div><h2>No results</h2></div>';
+  const rows = buildings.map(b => {
+    const badge = b.online
+      ? '<span class="online-badge"><span class="badge-dot"></span>ONLINE</span>'
+      : '<span class="offline-badge"><span class="badge-dot"></span>OFFLINE</span>';
+    const ips = (b.public_ips||[]).map((ip,i) =>
+      '<span class="td-ip'+(i>0?' wan2':'')+'" style="display:block">'+ip+'</span>'
+    ).join('') || '<span style="color:var(--muted);font-size:12px">N/A</span>';
+    const updated = b.updated_at ? new Date(b.updated_at).toLocaleString('th-TH',{hour12:false}) : '-';
+    return '<tr><td><span class="td-name">&#127970; '+b.name+'</span></td><td>'+ips+'</td><td>'+badge+'</td><td class="td-time">'+updated+'</td></tr>';
+  }).join('');
+  return '<div class="tbl-wrap"><table class="data-table"><thead><tr><th>Building</th><th>Public IP</th><th>Status</th><th>Last Update</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// ── Search & Filter ──────────────────────────
+let allBuildings = [];
+let currentFilter = 'all';
+let rawRecord = {}; // เก็บ raw data จาก Gist สำหรับ delete
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('f-' + (f==='all'?'all':f==='online'?'online':'offline')).classList.add('active');
+  filterCards();
+}
+
+function filterCards() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  const filtered = allBuildings.filter(b => {
+    const matchFilter = currentFilter === 'all' || (currentFilter === 'online' ? b.online : !b.online);
+    const matchSearch = !q ||
+      b.name.toLowerCase().includes(q) ||
+      (b.public_ips || []).some(ip => ip.includes(q));
+    return matchFilter && matchSearch;
+  });
+  const main = document.getElementById('main');
+  if (currentView === 'table') {
+    main.innerHTML = buildTableView(filtered);
+  } else if (!filtered.length) {
+    main.innerHTML = '<div class="center-msg" style="grid-column:1/-1"><div class="icon">&#128270;</div><h2>No results found</h2><p>Try different keyword</p></div>';
+  } else {
+    main.innerHTML = filtered.map((b, i) => buildCard(b, i)).join('');
+  }
+  document.getElementById('search-count').textContent = filtered.length + ' / ' + allBuildings.length + ' buildings';
+}
+
+// ── Delete Building ──────────────────────────
+function confirmDelete(encodedKey, name, e) {
+  e.stopPropagation();
+  const key = decodeURIComponent(encodedKey);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'delete-modal';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-icon">🗑️</div>
+      <div class="modal-title">ลบอาคารออกจากระบบ?</div>
+      <div class="modal-sub">คุณต้องการลบ <strong>${name}</strong><br>ออกจาก Gist อย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeModal()">✕ ยกเลิก</button>
+        <button class="modal-confirm" id="modal-confirm-btn" onclick="deleteBuilding('${encodedKey}','${name.replace(/'/g,"\\'")}')">🗑️ ลบเลย</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(ev){ if(ev.target===overlay) closeModal(); });
+}
+
+function closeModal() {
+  const m = document.getElementById('delete-modal');
+  if (m) m.remove();
+}
+
+async function deleteBuilding(encodedKey, name) {
+  const key = decodeURIComponent(encodedKey);
+  const cfg = getConfig();
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.classList.add('loading');
+  btn.textContent = '⟳ กำลังลบ...';
+
+  try {
+    // ลบ building key ออกจาก rawRecord
+    const newRecord = JSON.parse(JSON.stringify(rawRecord));
+    delete newRecord.buildings[key];
+
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', key: key })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    closeModal();
+    // อัปเดต local state ทันทีโดยไม่ต้อง reload
+    allBuildings = allBuildings.filter(b => (b._key || b.name) !== key);
+    rawRecord = newRecord;
+    filterCards();
+    // อัปเดต stats
+    const online  = allBuildings.filter(b => b.online).length;
+    document.getElementById('s-total').textContent   = allBuildings.length;
+    document.getElementById('s-online').textContent  = online;
+    document.getElementById('s-offline').textContent = allBuildings.length - online;
+    document.getElementById('s-ips').textContent     = allBuildings.reduce((a,b)=>a+(b.public_ips||[]).length,0);
+    document.getElementById('search-count').textContent = allBuildings.length+' / '+allBuildings.length+' buildings';
+
+  } catch(e) {
+    alert('ลบไม่สำเร็จ: ' + e.message);
+    btn.classList.remove('loading');
+    btn.textContent = '🗑️ ลบเลย';
+  }
+}
+
+async function loadData() {
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.textContent = '⟳ Loading...';
+
+  try {
+    const res = await fetch(API_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'API Error');
+    const data = { buildings: json.buildings || {} };
+    rawRecord = data;
+    const buildingsObj = data.buildings || {};
+    const buildings = Object.entries(buildingsObj).map(([k, v]) => ({...v, _key: k}));
+  // Override online status based on last update time (>10 min = offline)
+  buildings.forEach(b => {
+    if (isStale(b.updated_at, 10)) b.online = false;
+  });
+
+    // Stats
+    const online  = buildings.filter(b => b.online).length;
+    const offline = buildings.length - online;
+    const totalIPs = buildings.reduce((a, b) => a + (b.public_ips||[]).length, 0);
+    document.getElementById('s-total').textContent  = buildings.length;
+    document.getElementById('s-online').textContent = online;
+    document.getElementById('s-offline').textContent = offline;
+    document.getElementById('s-ips').textContent    = totalIPs;
+    document.getElementById('ts').textContent = 'Updated: ' + new Date().toLocaleTimeString('th-TH');
+
+    if (!buildings.length) {
+      document.getElementById('main').innerHTML = `
+        <div class="center-msg">
+          <div class="icon">&#128235;</div>
+          <h2>ยังไม่มีข้อมูล</h2>
+          <p>รัน <code>reporter.py</code> บน Windows แต่ละอาคารก่อน</p>
+        </div>`;
+    } else {
+      // Sort: online first, then by name
+      buildings.sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name));
+      allBuildings = buildings;
+      document.getElementById('search-bar').style.display = 'flex';
+      document.getElementById('search-count').textContent = buildings.length + ' / ' + buildings.length + ' buildings';
+      filterCards();
+    }
+
+  } catch(e) {
+    document.getElementById('main').innerHTML = `
+      <div class="center-msg">
+        <div class="icon">&#10060;</div>
+        <h2>โหลดข้อมูลไม่สำเร็จ</h2>
+        <p>${e.message}<br>ตรวจสอบการเชื่อมต่อ Internet</p>
+      </div>`;
+  }
+
+  btn.classList.remove('loading');
+  btn.textContent = '⟳ Refresh';
+}
+
+// Auto refresh
+let countdown = AUTO_REFRESH_SEC;
+setInterval(() => {
+  countdown--;
+  if (countdown <= 0) { loadData(); countdown = AUTO_REFRESH_SEC; }
+}, 1000);
+
+loadData();
+</script>
+</body>
+</html>
