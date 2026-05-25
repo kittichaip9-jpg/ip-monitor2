@@ -234,9 +234,54 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* -- LOGIN SCREEN -- */
+.login-screen{position:fixed;inset:0;background:#070d1a;z-index:999;
+  display:flex;align-items:center;justify-content:center}
+.login-card{background:linear-gradient(135deg,#0d1b2e,#0f2240);
+  border:1px solid rgba(0,224,255,.15);border-radius:20px;
+  padding:40px 44px;width:380px;max-width:90vw;
+  box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 0 1px rgba(0,224,255,.08)}
+.login-logo{font-size:48px;text-align:center;margin-bottom:8px}
+.login-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+  color:var(--text);text-align:center;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:28px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:11px;color:var(--muted);
+  letter-spacing:1px;margin-bottom:6px}
+.login-field input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.3);
+  border:1px solid var(--border2);border-radius:8px;padding:11px 14px;
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;
+  outline:none;transition:border .2s}
+.login-field input:focus{border-color:var(--accent)}
+.login-error{display:none;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
+  border-radius:8px;padding:9px 14px;margin-bottom:14px;
+  font-size:12px;color:#ff3d5a;text-align:center}
+.login-btn{width:100%;padding:13px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,var(--accent),#0099bb);
+  color:#070d1a;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,224,255,.3)}
+.login-btn:active{transform:translateY(0)}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🌐</div>
+    <div class="login-title">IP Monitor</div>
+    <div class="login-sub">Building Public IP Tracker</div>
+    <div class="login-error" id="login-err">❌ รหัสผ่านไม่ถูกต้อง</div>
+    <div class="login-field">
+      <label>PASSWORD</label>
+      <input type="password" id="login-pass" placeholder="••••••••••"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">🔓 เข้าสู่ระบบ</button>
+  </div>
+</div>
 
 <header>
   <div class="brand">
@@ -303,6 +348,39 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 </main>
 
 <script>
+
+// ── Login ─────────────────────────────────────
+const PASS_HASH = '5e5e485972493f3d704cd81026be9f19'; // md5("smartzone")
+
+async function md5(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function doLogin() {
+  const pass = document.getElementById('login-pass').value;
+  if (!pass) return;
+  // ใช้ SHA-256 แทน
+  const hash = await md5(pass);
+  const correct = await md5('smartzone');
+  if (hash === correct) {
+    sessionStorage.setItem('ip_auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    loadData();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+
+function checkAuth() {
+  if (sessionStorage.getItem('ip_auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+    return true;
+  }
+  return false;
+}
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzPjPr_QC1CAy1Ioxe5piDumpaP1NK3yyyhdyl8PTc9M7CbxpYv6FQt7ZPo9hJ1kJWF/exec";
 const AUTO_REFRESH_SEC = 60;
@@ -504,6 +582,7 @@ async function deleteBuilding(encodedKey, name) {
 }
 
 async function loadData() {
+  if (!checkAuth()) return;
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('loading');
   btn.textContent = '⟳ Loading...';
@@ -564,11 +643,16 @@ async function loadData() {
 // Auto refresh
 let countdown = AUTO_REFRESH_SEC;
 setInterval(() => {
+  if (!sessionStorage.getItem('ip_auth')) return;
   countdown--;
   if (countdown <= 0) { loadData(); countdown = AUTO_REFRESH_SEC; }
 }, 1000);
 
-loadData();
+if (checkAuth()) {
+  loadData();
+} else {
+  document.getElementById('login-pass').focus();
+}
 </script>
 </body>
 </html>
